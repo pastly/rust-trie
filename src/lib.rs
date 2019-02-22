@@ -7,7 +7,7 @@ use std::hash::Hash;
 #[derive(Debug)]
 struct Trie<K, V>
 where
-    K: Eq + Hash + Debug + Clone,
+    K: Eq + Hash + Debug + Clone + ToString,
     V: Debug + Clone,
 {
     val: Option<V>,
@@ -16,7 +16,7 @@ where
 
 impl<K, V> Trie<K, V>
 where
-    K: Eq + Hash + Debug + Clone,
+    K: Eq + Hash + Debug + Clone + ToString,
     V: Debug + Clone,
 {
     fn new(val: Option<V>) -> Self {
@@ -60,11 +60,16 @@ where
     }
 
     fn iter<'a>(&'a self) -> TrieIter<'a, K, V> {
+        self.iter_impl(&[])
+    }
+
+    fn iter_impl<'a>(&'a self, keys_above: &[String]) -> TrieIter<'a, K, V> {
         TrieIter {
             inner: self,
             child_iters: None,
             current: 0,
             did_self: false,
+            keys_above: keys_above.to_vec(),
         }
     }
 }
@@ -72,21 +77,22 @@ where
 #[derive(Debug)]
 struct TrieIter<'a, K, V>
 where
-    K: Eq + Hash + Debug + Clone,
+    K: Eq + Hash + Debug + Clone + ToString,
     V: Debug + Clone,
 {
     inner: &'a Trie<K, V>,
     child_iters: Option<Vec<Self>>,
     current: usize,
     did_self: bool,
+    keys_above: Vec<String>,
 }
 
 impl<'a, K, V> Iterator for TrieIter<'a, K, V>
 where
-    K: Eq + Hash + Debug + Clone,
+    K: Eq + Hash + Debug + Clone + ToString,
     V: Debug + Clone,
 {
-    type Item = V;
+    type Item = (String, V);
 
     fn next(&mut self) -> Option<Self::Item> {
         // If we haven't done ourself yet, then we need to build up a vector of iters from our
@@ -99,9 +105,14 @@ where
                 assert!(self.child_iters.is_none());
                 assert!(self.current == 0);
                 // Get all children Tries
-                let children_iter = self.inner.children.values();
+                let child_keys_iter = self.inner.children.keys();
                 // Turn iter of Tries into iter of TrieIters
-                let child_iters = children_iter.map(|c| c.iter());
+                let child_iters = child_keys_iter.map(|k| {
+                    self.keys_above.push(k.to_string());
+                    let i = self.inner.children[k].iter_impl(&self.keys_above);
+                    self.keys_above.pop();
+                    i
+                });
                 // Collect and store
                 let v = child_iters.collect::<Vec<TrieIter<'a, K, V>>>();
                 self.child_iters = Some(v);
@@ -109,7 +120,7 @@ where
             // Now that we are done storing iters for our children, we should return our own value,
             // if any.
             if self.inner.val.is_some() {
-                return Some(self.inner.val.clone().unwrap());
+                return Some((self.keys_above.join("/"), self.inner.val.clone().unwrap()));
             }
         }
         assert!(self.did_self);
@@ -177,6 +188,18 @@ mod tests {
         t.insert(&["a", "c", "d"], "acd");
         t.insert(&["a"], "a");
         t.insert(&["1", "2", "3"], "123");
+        for item in t.iter() {
+            println!("ITEM: {:?}", item);
+        }
+        assert!(false);
+    }
+
+    #[test]
+    fn boop() {
+        let mut t: Trie<&str, ()> = Trie::new(None);
+        t.insert(&"a/b".split("/").collect::<Vec<&str>>(), ());
+        t.insert(&"a/b/c/d/e".split("/").collect::<Vec<&str>>(), ());
+        t.insert(&"1/2".split("/").collect::<Vec<&str>>(), ());
         for item in t.iter() {
             println!("ITEM: {:?}", item);
         }
