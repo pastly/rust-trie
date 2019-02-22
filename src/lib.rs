@@ -7,7 +7,7 @@ use std::hash::Hash;
 #[derive(Debug)]
 struct Trie<K, V>
 where
-    K: Eq + Hash + Debug + Clone + ToString,
+    K: Eq + Hash + Debug + Clone,
     V: Debug + Clone,
 {
     val: Option<V>,
@@ -16,7 +16,7 @@ where
 
 impl<K, V> Trie<K, V>
 where
-    K: Eq + Hash + Debug + Clone + ToString,
+    K: Eq + Hash + Debug + Clone,
     V: Debug + Clone,
 {
     fn new(val: Option<V>) -> Self {
@@ -63,7 +63,7 @@ where
         self.iter_impl(&[])
     }
 
-    fn iter_impl<'a>(&'a self, keys_above: &[String]) -> TrieIter<'a, K, V> {
+    fn iter_impl<'a>(&'a self, keys_above: &[&'a K]) -> TrieIter<'a, K, V> {
         TrieIter {
             inner: self,
             child_iters: None,
@@ -77,22 +77,22 @@ where
 #[derive(Debug)]
 struct TrieIter<'a, K, V>
 where
-    K: Eq + Hash + Debug + Clone + ToString,
+    K: Eq + Hash + Debug + Clone,
     V: Debug + Clone,
 {
     inner: &'a Trie<K, V>,
     child_iters: Option<Vec<Self>>,
     current: usize,
     did_self: bool,
-    keys_above: Vec<String>,
+    keys_above: Vec<&'a K>,
 }
 
 impl<'a, K, V> Iterator for TrieIter<'a, K, V>
 where
-    K: Eq + Hash + Debug + Clone + ToString,
+    K: Eq + Hash + Debug + Clone,
     V: Debug + Clone,
 {
-    type Item = (String, V);
+    type Item = (Vec<&'a K>, V);
 
     fn next(&mut self) -> Option<Self::Item> {
         // If we haven't done ourself yet, then we need to build up a vector of iters from our
@@ -108,7 +108,7 @@ where
                 let child_keys_iter = self.inner.children.keys();
                 // Turn iter of Tries into iter of TrieIters
                 let child_iters = child_keys_iter.map(|k| {
-                    self.keys_above.push(k.to_string());
+                    self.keys_above.push(k);
                     let i = self.inner.children[k].iter_impl(&self.keys_above);
                     self.keys_above.pop();
                     i
@@ -120,7 +120,7 @@ where
             // Now that we are done storing iters for our children, we should return our own value,
             // if any.
             if self.inner.val.is_some() {
-                return Some((self.keys_above.join("/"), self.inner.val.clone().unwrap()));
+                return Some((self.keys_above.clone(), self.inner.val.clone().unwrap()));
             }
         }
         assert!(self.did_self);
@@ -200,8 +200,9 @@ mod tests {
         t.insert(&"a/b".split("/").collect::<Vec<&str>>(), ());
         t.insert(&"a/b/c/d/e".split("/").collect::<Vec<&str>>(), ());
         t.insert(&"1/2".split("/").collect::<Vec<&str>>(), ());
-        for item in t.iter() {
-            println!("ITEM: {:?}", item);
+        for (k, v) in t.iter() {
+            let k = k.iter().map(|k_| k_.to_string()).collect::<Vec<String>>().join("/");
+            println!("ITEM: {:?} => {:?}", k, v);
         }
         assert!(false);
     }
