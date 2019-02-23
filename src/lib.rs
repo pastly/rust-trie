@@ -4,7 +4,12 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 use std::hash::Hash;
 
-#[derive(Debug)]
+#[macro_use]
+extern crate serde;
+extern crate bincode;
+//extern crate serde_json;
+
+#[derive(Serialize, Deserialize, Debug)]
 struct Trie<K, V>
 where
     K: Eq + Hash + Debug + Clone,
@@ -153,57 +158,100 @@ where
 #[cfg(test)]
 mod tests {
     use super::Trie;
-    #[test]
-    fn foo() {
-        let mut t: Trie<u8, bool> = Trie::new(None);
-        t.insert(&[1, 2, 3], true);
-        t.insert(&[1, 2, 4], true);
-        println!("{:?}", t);
-        let v1 = t.fetch(&[1]);
-        println!("{:?}", v1);
-        let v2 = t.fetch(&[1, 2, 3]);
-        println!("{:?}", v2);
-        assert!(false);
-    }
+    //#[test]
+    //fn foo() {
+    //    let mut t: Trie<u8, bool> = Trie::new(None);
+    //    t.insert(&[1, 2, 3], true);
+    //    t.insert(&[1, 2, 4], true);
+    //    println!("{:?}", t);
+    //    let v1 = t.fetch(&[1]);
+    //    println!("{:?}", v1);
+    //    let v2 = t.fetch(&[1, 2, 3]);
+    //    println!("{:?}", v2);
+    //    assert!(false);
+    //}
 
-    #[test]
-    fn bar() {
-        let mut t: Trie<u16, String> = Trie::new(None);
-        t.insert(&[1], "A".to_string());
-        t.insert(&[2], "B".to_string());
-        t.insert(&[3], "C".to_string());
-        t.insert(&[2, 21, 211, 2111], "D".to_string());
-        //println!("{:?}", t);
-        for item in t.iter() {
-            println!("ITEM: {:?}", item);
-        }
-        assert!(false);
-    }
+    //#[test]
+    //fn bar() {
+    //    let mut t: Trie<u16, String> = Trie::new(None);
+    //    t.insert(&[1], "A".to_string());
+    //    t.insert(&[2], "B".to_string());
+    //    t.insert(&[3], "C".to_string());
+    //    t.insert(&[2, 21, 211, 2111], "D".to_string());
+    //    //println!("{:?}", t);
+    //    for item in t.iter() {
+    //        println!("ITEM: {:?}", item);
+    //    }
+    //    assert!(false);
+    //}
 
-    #[test]
-    fn baz() {
-        let mut t: Trie<&str, &str> = Trie::new(None);
-        t.insert(&["a", "b"], "ab");
-        t.insert(&["a", "c"], "ac");
-        t.insert(&["a", "c", "d"], "acd");
-        t.insert(&["a"], "a");
-        t.insert(&["1", "2", "3"], "123");
-        for item in t.iter() {
-            println!("ITEM: {:?}", item);
-        }
-        assert!(false);
-    }
+    //#[test]
+    //fn baz() {
+    //    let mut t: Trie<&str, &str> = Trie::new(None);
+    //    t.insert(&["a", "b"], "ab");
+    //    t.insert(&["a", "c"], "ac");
+    //    t.insert(&["a", "c", "d"], "acd");
+    //    t.insert(&["a"], "a");
+    //    t.insert(&["1", "2", "3"], "123");
+    //    for item in t.iter() {
+    //        println!("ITEM: {:?}", item);
+    //    }
+    //    assert!(false);
+    //}
 
     #[test]
     fn boop() {
-        let mut t: Trie<&str, ()> = Trie::new(None);
-        t.insert(&"a/b".split("/").collect::<Vec<&str>>(), ());
-        t.insert(&"a/b/c/d/e".split("/").collect::<Vec<&str>>(), ());
-        t.insert(&"1/2".split("/").collect::<Vec<&str>>(), ());
-        for (k, v) in t.iter() {
-            let k = k.iter().map(|k_| k_.to_string()).collect::<Vec<String>>().join("/");
-            println!("ITEM: {:?} => {:?}", k, v);
+        use std::fs::File;
+        use std::io::{BufRead, BufReader};
+        let mut t: Trie<String, ()> = Trie::new(None);
+
+        let fd = BufReader::new(File::open("testdata.txt").unwrap());
+        for line in fd.lines() {
+            let line = line.unwrap().clone();
+            t.insert(&line.split("/").map(|s| s.to_string()).collect::<Vec<String>>(), ());
         }
+        //for (k, v) in t.iter() {
+        //    let k = k.iter().map(|k_| k_.to_string()).collect::<Vec<String>>().join("/");
+        //    println!("ITEM: {:?} => {:?}", k, v);
+        //}
         assert!(false);
+    }
+
+    #[test]
+    fn beep() {
+        use bincode::{serialize, deserialize};
+        //use serde_json::json;
+
+        use std::fs::File;
+        use std::io::{Write, BufRead, BufReader};
+        let mut t: Trie<String, ()> = Trie::new(None);
+
+        let fd = BufReader::new(File::open("testdata3.txt").unwrap());
+        for line in fd.lines() {
+            let line = line.unwrap().clone();
+            t.insert(&line.split("/").map(|s| s.to_string()).collect::<Vec<String>>(), ());
+        }
+
+        let encoded: Vec<u8> = serialize(&t).unwrap();
+        println!("{:?} bytes encoded", encoded.len());
+        let mut fd = File::create("out.bin").unwrap();
+        fd.write_all(&encoded).unwrap();
+
+        
+        //println!("{:?}", json!(t).to_string().len());
+    }
+
+    #[test]
+    fn bloop() {
+        use bincode::{serialize, deserialize};
+        use std::fs::File;
+        use std::io::{Write, BufRead, BufReader};
+        use std::collections::HashMap;
+        let mut hm: HashMap<String, ()> = HashMap::new();
+        //hm.insert("Hello".to_string(), ());
+        let encoded: Vec<u8> = serialize(&hm).unwrap();
+        println!("{:?} bytes encoded", encoded.len());
+        let mut fd = File::create("out.bin").unwrap();
+        fd.write_all(&encoded).unwrap();
     }
 }
