@@ -6,8 +6,7 @@ use std::hash::Hash;
 
 #[macro_use]
 extern crate serde;
-extern crate bincode;
-//extern crate serde_json;
+extern crate serde_cbor;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct Trie<K, V>
@@ -219,39 +218,21 @@ mod tests {
 
     #[test]
     fn beep() {
-        use bincode::{serialize, deserialize};
-        //use serde_json::json;
+        use serde_cbor;
 
         use std::fs::File;
         use std::io::{Write, BufRead, BufReader};
         let mut t: Trie<String, ()> = Trie::new(None);
 
-        let fd = BufReader::new(File::open("testdata3.txt").unwrap());
+        let fd = BufReader::new(File::open("testdata2.txt").unwrap());
         for line in fd.lines() {
             let line = line.unwrap().clone();
             t.insert(&line.split("/").map(|s| s.to_string()).collect::<Vec<String>>(), ());
         }
 
-        let encoded: Vec<u8> = serialize(&t).unwrap();
-        println!("{:?} bytes encoded", encoded.len());
-        let mut fd = File::create("out.bin").unwrap();
-        fd.write_all(&encoded).unwrap();
-
-        
-        //println!("{:?}", json!(t).to_string().len());
-    }
-
-    #[test]
-    fn bloop() {
-        use bincode::{serialize, deserialize};
-        use std::fs::File;
-        use std::io::{Write, BufRead, BufReader};
-        use std::collections::HashMap;
-        let mut hm: HashMap<String, ()> = HashMap::new();
-        //hm.insert("Hello".to_string(), ());
-        let encoded: Vec<u8> = serialize(&hm).unwrap();
-        println!("{:?} bytes encoded", encoded.len());
-        let mut fd = File::create("out.bin").unwrap();
+        // cbor
+        let encoded: Vec<u8> = serde_cbor::to_vec(&t).unwrap();
+        let mut fd = File::create("out.bin.cbor").unwrap();
         fd.write_all(&encoded).unwrap();
     }
 }

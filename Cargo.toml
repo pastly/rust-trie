@@ -7,5 +7,4 @@ license = "MIT"
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
-bincode = { version = "1.1" }
-#serde_json = { version = "1.0" }
+serde_cbor = { version = "0.9" }
