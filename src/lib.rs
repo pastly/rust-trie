@@ -63,6 +63,18 @@ where
         }
     }
 
+    fn keys<'a>(&'a self) -> TrieKeyIter<'a, K, V> {
+        TrieKeyIter {
+            iter: self.iter_impl(&[]),
+        }
+    }
+
+    fn values<'a>(&'a self) -> TrieValueIter<'a, K, V> {
+        TrieValueIter {
+            iter: self.iter_impl(&[]),
+        }
+    }
+
     fn iter<'a>(&'a self) -> TrieIter<'a, K, V> {
         self.iter_impl(&[])
     }
@@ -74,6 +86,54 @@ where
             current: 0,
             did_self: false,
             keys_above: keys_above.to_vec(),
+        }
+    }
+}
+
+#[derive(Debug)]
+struct TrieKeyIter<'a, K, V>
+where
+    K: Eq + Hash + Debug + Clone,
+    V: Debug + Clone,
+{
+    iter: TrieIter<'a, K, V>,
+}
+
+impl<'a, K, V> Iterator for TrieKeyIter<'a, K, V>
+where
+    K: Eq + Hash + Debug + Clone,
+    V: Debug + Clone,
+{
+    type Item = Vec<&'a K>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.iter.next() {
+            None => None,
+            Some(n) => Some(n.0),
+        }
+    }
+}
+
+#[derive(Debug)]
+struct TrieValueIter<'a, K, V>
+where
+    K: Eq + Hash + Debug + Clone,
+    V: Debug + Clone,
+{
+    iter: TrieIter<'a, K, V>,
+}
+
+impl<'a, K, V> Iterator for TrieValueIter<'a, K, V>
+where
+    K: Eq + Hash + Debug + Clone,
+    V: Debug + Clone,
+{
+    type Item = V;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.iter.next() {
+            None => None,
+            Some(n) => Some(n.1),
         }
     }
 }
@@ -207,7 +267,13 @@ mod tests {
         let fd = BufReader::new(File::open("testdata.txt").unwrap());
         for line in fd.lines() {
             let line = line.unwrap().clone();
-            t.insert(&line.split("/").map(|s| s.to_string()).collect::<Vec<String>>(), ());
+            t.insert(
+                &line
+                    .split("/")
+                    .map(|s| s.to_string())
+                    .collect::<Vec<String>>(),
+                (),
+            );
         }
         //for (k, v) in t.iter() {
         //    let k = k.iter().map(|k_| k_.to_string()).collect::<Vec<String>>().join("/");
@@ -221,18 +287,41 @@ mod tests {
         use serde_cbor;
 
         use std::fs::File;
-        use std::io::{Write, BufRead, BufReader};
+        use std::io::{BufRead, BufReader, Write};
         let mut t: Trie<String, ()> = Trie::new(None);
 
         let fd = BufReader::new(File::open("testdata2.txt").unwrap());
         for line in fd.lines() {
             let line = line.unwrap().clone();
-            t.insert(&line.split("/").map(|s| s.to_string()).collect::<Vec<String>>(), ());
+            t.insert(
+                &line
+                    .split("/")
+                    .map(|s| s.to_string())
+                    .collect::<Vec<String>>(),
+                (),
+            );
         }
 
         // cbor
         let encoded: Vec<u8> = serde_cbor::to_vec(&t).unwrap();
         let mut fd = File::create("out.bin.cbor").unwrap();
         fd.write_all(&encoded).unwrap();
+    }
+
+    #[test]
+    fn bloop() {
+        let mut t: Trie<&str, &str> = Trie::new(None);
+        t.insert(&["a", "b"], "ab");
+        t.insert(&["a", "c"], "ac");
+        t.insert(&["a", "c", "d"], "acd");
+        t.insert(&["a"], "a");
+        t.insert(&["1", "2", "3"], "123");
+        for item in t.keys() {
+            println!("Key: {:?}", item);
+        }
+        for item in t.values() {
+            println!("Value: {:?}", item);
+        }
+        assert!(false);
     }
 }
