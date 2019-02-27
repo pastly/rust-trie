@@ -309,7 +309,7 @@ mod tests {
     }
 
     #[test]
-    /// assert that serde still can't tell the difference between None and ()
+    /// assert that serde still can't tell the difference between None and Some(())
     fn serialize_none_vs_unit() {
         let mut t: Trie<&str, ()> = Trie::new(None);
         t.insert(&["yes_exist"], ());
