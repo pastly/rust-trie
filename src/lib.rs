@@ -222,6 +222,14 @@ mod tests {
     use serde_cbor;
 
     #[test]
+    #[should_panic(expected = "Tried to insert into Trie where value already exists")]
+    fn insert_duplicate() {
+        let mut t: Trie<i32, i32> = Trie::new(None);
+        t.insert(&[1], 1);
+        t.insert(&[1], 2);
+    }
+
+    #[test]
     fn single_key_value() {
         let mut t: Trie<i32, i32> = Trie::new(None);
         t.insert(&[1, 2, 3], 123);
