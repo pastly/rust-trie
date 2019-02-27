@@ -217,111 +217,115 @@ where
 #[cfg(test)]
 mod tests {
     use super::Trie;
-    //#[test]
-    //fn foo() {
-    //    let mut t: Trie<u8, bool> = Trie::new(None);
-    //    t.insert(&[1, 2, 3], true);
-    //    t.insert(&[1, 2, 4], true);
-    //    println!("{:?}", t);
-    //    let v1 = t.fetch(&[1]);
-    //    println!("{:?}", v1);
-    //    let v2 = t.fetch(&[1, 2, 3]);
-    //    println!("{:?}", v2);
-    //    assert!(false);
-    //}
-
-    //#[test]
-    //fn bar() {
-    //    let mut t: Trie<u16, String> = Trie::new(None);
-    //    t.insert(&[1], "A".to_string());
-    //    t.insert(&[2], "B".to_string());
-    //    t.insert(&[3], "C".to_string());
-    //    t.insert(&[2, 21, 211, 2111], "D".to_string());
-    //    //println!("{:?}", t);
-    //    for item in t.iter() {
-    //        println!("ITEM: {:?}", item);
-    //    }
-    //    assert!(false);
-    //}
-
-    //#[test]
-    //fn baz() {
-    //    let mut t: Trie<&str, &str> = Trie::new(None);
-    //    t.insert(&["a", "b"], "ab");
-    //    t.insert(&["a", "c"], "ac");
-    //    t.insert(&["a", "c", "d"], "acd");
-    //    t.insert(&["a"], "a");
-    //    t.insert(&["1", "2", "3"], "123");
-    //    for item in t.iter() {
-    //        println!("ITEM: {:?}", item);
-    //    }
-    //    assert!(false);
-    //}
+    use serde_cbor;
 
     #[test]
-    fn boop() {
-        use std::fs::File;
-        use std::io::{BufRead, BufReader};
-        let mut t: Trie<String, ()> = Trie::new(None);
-
-        let fd = BufReader::new(File::open("testdata.txt").unwrap());
-        for line in fd.lines() {
-            let line = line.unwrap().clone();
-            t.insert(
-                &line
-                    .split("/")
-                    .map(|s| s.to_string())
-                    .collect::<Vec<String>>(),
-                (),
-            );
-        }
-        //for (k, v) in t.iter() {
-        //    let k = k.iter().map(|k_| k_.to_string()).collect::<Vec<String>>().join("/");
-        //    println!("ITEM: {:?} => {:?}", k, v);
-        //}
-        assert!(false);
+    fn single_key_value() {
+        let mut t: Trie<i32, i32> = Trie::new(None);
+        t.insert(&[1, 2, 3], 123);
+        assert_eq!(t.fetch(&[1, 2, 3]), Some(123));
     }
 
     #[test]
-    fn beep() {
-        use serde_cbor;
+    fn single_key_value_no_invalid() {
+        let mut t: Trie<i32, i32> = Trie::new(None);
+        t.insert(&[1, 2, 3], 123);
+        assert_eq!(t.fetch(&[1, 2, 4]), None);
+        assert_eq!(t.fetch(&[1, 2]), None);
+        assert_eq!(t.fetch(&[2]), None);
+    }
 
-        use std::fs::File;
-        use std::io::{BufRead, BufReader, Write};
-        let mut t: Trie<String, ()> = Trie::new(None);
+    #[test]
+    fn single_key_value_some_root() {
+        let mut t: Trie<i32, i32> = Trie::new(Some(0));
+        t.insert(&[1, 2, 3], 123);
+        assert_eq!(t.fetch(&[0, 1, 2, 3]), None);
+        assert_eq!(t.fetch(&[1, 2, 3]), Some(123));
+    }
 
-        let fd = BufReader::new(File::open("testdata2.txt").unwrap());
-        for line in fd.lines() {
-            let line = line.unwrap().clone();
-            t.insert(
-                &line
-                    .split("/")
-                    .map(|s| s.to_string())
-                    .collect::<Vec<String>>(),
-                (),
-            );
-        }
+    fn iter_test_data() -> Trie<i32, i32> {
+        let mut t: Trie<i32, i32> = Trie::new(None);
+        t.insert(&[1], 1);
+        t.insert(&[1, 1], 11);
+        t.insert(&[1, 2], 12);
+        t.insert(&[1, 2, 1], 121);
+        t.insert(&[1, 2, 2], 122);
+        t.insert(&[1, 3, 1, 1, 1], 13111);
+        t
+    }
 
-        // cbor
+    #[test]
+    fn iter_order() {
+        let t = iter_test_data();
+        let items = t.iter().collect::<Vec<_>>();
+        let pos_1 = items.iter().position(|k| k == &(vec![&1i32], 1i32)).unwrap();
+        let pos_11 = items.iter().position(|k| k == &(vec![&1i32, &1], 11i32)).unwrap();
+        let pos_12 = items.iter().position(|k| k == &(vec![&1i32, &2], 12i32)).unwrap();
+        let pos_121 = items.iter().position(|k| k == &(vec![&1i32, &2, &1], 121i32)).unwrap();
+        let pos_122 = items.iter().position(|k| k == &(vec![&1i32, &2, &2], 122i32)).unwrap();
+        let pos_13111 = items.iter().position(|k| k == &(vec![&1i32, &3, &1, &1, &1], 13111i32)).unwrap();
+        assert!(pos_1 == 0);
+        assert!(pos_11 > pos_1);
+        assert!(pos_12 > pos_1);
+        assert!(pos_121 > pos_12);
+        assert!(pos_122 > pos_12);
+        assert!(pos_13111 > pos_1);
+    }
+
+    #[test]
+    fn iter_key_order() {
+        let t = iter_test_data();
+        let keys = t.keys().collect::<Vec<_>>();
+        let pos_1 = keys.iter().position(|k| k == &vec![&1i32]).unwrap();
+        let pos_11 = keys.iter().position(|k| k == &vec![&1i32, &1]).unwrap();
+        let pos_12 = keys.iter().position(|k| k == &vec![&1i32, &2]).unwrap();
+        let pos_121 = keys.iter().position(|k| k == &vec![&1i32, &2, &1]).unwrap();
+        let pos_122 = keys.iter().position(|k| k == &vec![&1i32, &2, &2]).unwrap();
+        let pos_13111 = keys.iter().position(|k| k == &vec![&1i32, &3, &1, &1, &1]).unwrap();
+        assert!(pos_1 == 0);
+        assert!(pos_11 > pos_1);
+        assert!(pos_12 > pos_1);
+        assert!(pos_121 > pos_12);
+        assert!(pos_122 > pos_12);
+        assert!(pos_13111 > pos_1);
+    }
+
+    #[test]
+    fn iter_value_order() {
+        let t = iter_test_data();
+        let vals = t.values().collect::<Vec<_>>();
+        let pos_1 = vals.iter().position(|v| v == &1i32).unwrap();
+        let pos_11 = vals.iter().position(|v| v == &11i32).unwrap();
+        let pos_12 = vals.iter().position(|v| v == &12i32).unwrap();
+        let pos_121 = vals.iter().position(|v| v == &121i32).unwrap();
+        let pos_122 = vals.iter().position(|v| v == &122i32).unwrap();
+        let pos_13111 = vals.iter().position(|v| v == &13111i32).unwrap();
+        assert!(pos_1 == 0);
+        assert!(pos_11 > pos_1);
+        assert!(pos_12 > pos_1);
+        assert!(pos_121 > pos_12);
+        assert!(pos_122 > pos_12);
+        assert!(pos_13111 > pos_1);
+    }
+
+    #[test]
+    /// assert that serde still can't tell the difference between None and ()
+    fn serialize_none_vs_unit() {
+        let mut t: Trie<&str, ()> = Trie::new(None);
+        t.insert(&["yes_exist"], ());
         let encoded: Vec<u8> = serde_cbor::to_vec(&t).unwrap();
-        let mut fd = File::create("out.bin.cbor").unwrap();
-        fd.write_all(&encoded).unwrap();
+        let out: Trie<&str, ()> = serde_cbor::de::from_slice(&encoded).unwrap();
+        assert_eq!(out.fetch(&["yes_exist"]), out.fetch(&["no_exist"]));
     }
 
     #[test]
-    fn bloop() {
-        let mut t: Trie<&str, &str> = Trie::new(None);
-        t.insert(&["a", "b"], "ab");
-        t.insert(&["a", "c"], "ac");
-        t.insert(&["a", "c", "d"], "acd");
-        t.insert(&["a"], "a");
-        t.insert(&["1", "2", "3"], "123");
-        for item in t.keys() {
-            println!("Key: {:?}", item);
-        }
-        for item in t.values() {
-            println!("Value: {:?}", item);
-        }
-        assert!(false);
+    fn serialize_simple() {
+        let mut t: Trie<i32, i32> = Trie::new(None);
+        t.insert(&[1, 1], 11);
+        t.insert(&[2, 1, 1], 211);
+        let encoded: Vec<u8> = serde_cbor::to_vec(&t).unwrap();
+        let out: Trie<i32, i32> = serde_cbor::de::from_slice(&encoded).unwrap();
+        assert_eq!(out.fetch(&[1, 1]), Some(11));
+        assert_eq!(out.fetch(&[2, 1, 1]), Some(211));
     }
 }
