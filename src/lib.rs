@@ -1,3 +1,5 @@
+/* Copyright 2019 Matthew Traudt */
+/* MIT License */
 use std::clone::Clone;
 use std::cmp::Eq;
 use std::collections::HashMap;
